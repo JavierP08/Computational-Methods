@@ -1,0 +1,66 @@
+from graphviz import Digraph
+
+class State:
+    def __init__(self, label=None, edges=None):
+        self.label = label
+        self.edges = edges or []
+        
+class NFA:
+    def __init__(self, start=None, accept=None):
+        self.start = start
+        self.accept = accept
+
+    def add_edge(self, frm, to, label):
+        frm.edges.append((to, label))
+
+    def from_regex(regex):
+        stack = []
+
+        for c in regex:
+            if c in ('a', 'b', '0', '1'):
+                a = State()
+                s = State(label=c, edges=[(a, None)])
+                stack.append(NFA(s=s, a=a))
+            elif c == 'E':
+                a = State()
+                s = State(edges=[(a, None)])
+                stack.append(NFA(s=s, a=a))
+            elif c == '*':
+                nfa = stack.pop()
+                a = State()
+                s = State(edges=[(nfa.start, None), (a, None)])
+                nfa.accept.edges = [(nfa.start, None), (a, None)]
+                stack.append(NFA(s=s, a=a))
+            elif c == '.':
+                nfa_2 = stack.pop()
+                nfa_1 = stack.pop()
+                a = State()
+                NFA.add_edge(nfa_1, nfa_2.start, None)
+                NFA.add_edge(nfa_2, a, None)
+                stack.append(NFA(start=nfa_1.start, a=a))
+            elif c == 'U':
+                nfa_2 = stack.pop()
+                nfa_1 = stack.pop()
+                a = State()
+                s = State(edges=[(nfa_1.start, None), (nfa_2.start, None)])
+                NFA.add_edge(nfa_1, a, None)
+                NFA.add_edge(nfa_2, a, None)
+                stack.append(NFA(s=s, a=a))
+
+        return stack.pop()
+
+
+regex = input("Enter a regular expression: ")
+
+nfa = NFA.from_regex(regex)
+
+dot = Digraph()
+dot.attr('node', shape='circle')
+
+dot.node(str(id(nfa.start)), label='Start')
+dot.node(str(id(nfa.accept)), label='Accept', shape='doublecircle')
+
+for frm in [nfa.start, nfa.accept]:
+    for to, label in frm.edges:
+        dot.edge(str(id(frm)), str(id(to)), label=label or 'E')
+dot.view()
